@@ -87,8 +87,10 @@ else
   fi
 fi
 
+export REGISTRY_HEALTH_HTTP_TIMEOUT="300s"
+export REGISTRY_HEALTH_TCP_TIMEOUT="300s"
 if ! is_created "contrail-dev-env-registry"; then
-  docker run --privileged --name contrail-dev-env-registry \
+  docker run --privileged --name contrail-dev-env-registry -v `pwd`/config.yml:/etc/docker/registry/config.yml \
     -d -p 6666:5000 \
     registry:2 >/dev/null
   echo contrail-dev-env-registry created.
@@ -110,6 +112,8 @@ if [[ "$own_vm" -eq 0 ]]; then
       -v /var/run/docker.sock:/var/run/docker.sock \
       -v ${rpm_source}:/root/contrail/RPMS \
       -v $(pwd):/root/contrail-dev-env \
+      -v /root/contrail:/root/contrail \
+      -v /root/src:/root/src \
       ${IMAGE}:${DEVENVTAG} >/dev/null
     echo contrail-developer-sandbox created.
   else
