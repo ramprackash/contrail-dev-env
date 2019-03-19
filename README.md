@@ -4,8 +4,8 @@
 
 This repository is actively maintained via [Gerrit] so please let us know about
 any problems you find. You can ask for help on [Slack] but if no one replies
-right away, go ahead and open a bug on [Launchpad] and tag the bug with the
-tag "dev-env" and it will get looked at soon. You can also post to the new
+right away, go ahead and open a bug on [JIRA] and label the bug with the
+label "dev-env" and it will get looked at soon. You can also post to the new
 [Google Group] if you're having trouble but don't know if the problem is a bug
 or a mistake on your part.
 
@@ -76,47 +76,94 @@ contrail-dev-env-registry  [Registry for contrail containers after they are buil
 docker attach contrail-developer-sandbox
 ```
 
-### 5. Run scons, UT, make RPMS or make containers
+### 5. Prepare developer-sandbox container
 
-*Required* first steps in the container:
+Required first steps in the container:
 
 ```
 cd /root/contrail-dev-env
-make sync           # get latest code using repo tool
+make sync           # get latest code
 make fetch_packages # pull third_party dependencies
 make setup          # set up docker container
-make dep            # install dependencies
+make dep            # install build dependencies
 ```
 
-Now you can run any commands using the source code sandbox, e.g.
+The descriptions of targets:
+
+* `make sync` - sync code in `./contrail` directory using `repo` tool
+* `make fetch_packages` - pull `./third_party` dependencies (after code checkout)
+* `make setup` - initial configuration of image (required to run once)
+* `make dep` - installs all build dependencies
+* `make dep-<pkg_name>` - installs build dependencies for <pkg_name>
+
+### 6. Make artifacts
+
+#### RPM packages
+
+* `make list` - lists all available RPM targets
+* `make rpm` - builds all RPMs
+* `make rpm-<pkg_name>` - builds single RPM for <pkg_name>
+
+#### Container images
+
+* `make list-containers` - lists all container targets
+* `make containers` - builds all containers' images, requires RPM packages in /root/contrail/RPMS
+* `make container-<container_name>` - builds single container as a target, with all docker dependencies
+
+#### Deployers
+
+* `make list-deployers` - lists all deployers container targets
+* `make deployers` - builds all deployers
+* `make deployer-<container_name>` - builds single deployer as a target, with all docker dependencies
+
+#### Clean
+
+* `make clean{-containers,-deployers,-repo,-rpm}` - delete artifacts
+
+### 7. Testing the deployment
+
+See https://github.com/Juniper/contrail-ansible-deployer/wiki/Contrail-with-Openstack-Kolla .
+Set `CONTAINER_REGISTRY` to `registry:5000` to use containers built in the previous step.
+
+### Alternate build methods
+
+Instead of step 5 above (which runs `scons` inside `make`), you can use `scons` directly. The steps 1-4 are still required. 
 
 ```
 cd /root/contrail
 scons # ( or "scons test" etc)
 ```
 
-Or use any of additional `make` targets provided by `contrail-dev-env/Makefile`:
+NOTE:
+Above example build whole TungstenFabric project with default kernel headers and those
+are headers for running kernel (`uname -r`). If you want to customize your manual build and
+use i.e newer kernel header take a look at below examples.
 
-* `make setup` - initial configuration of image (required to run once)
-* `make sync` - sync code in `contrail` directory using `repo` tool
-* `make fetch_packages` - pull third_party dependencies (after code checkout)
-* `make dep` - installs all build dependencies
-* `make dep-<pkg_name>` - installs build dependencies for <pkg_name>
-* `make list` - lists all available rpm targets
-* `make rpm` - builds all RPMs
-* `make rpm-<pkg_name>` - builds single RPM for <pkg_name>
-* `make list-containers` - lists all container targets
-* `make containers` - builds all containers, requires RPM packages in /root/contrail/RPMS
-* `make container-<container_name>` - builds single container as a target, with all docker dependencies
-* `make list-deployers` - lists all deployers container targets
-* `make deployers` - builds all deployers
-* `make deployer-<container_name>` - builds single deployer as a target, with all docker dependencies
-* `make clean{-containers,-deployers,-repo,-rpm}` - artifacts cleanup
+In case you want to compile TungstenFabric with latest or another custom kernel headers installed
+in `contrail-developer-sanbox` container, then you have to run scons with extra arguments:
 
-### 6. Testing the deployment
+```
+RTE_KERNELDIR=/path/to/custom_kernel_headers scons --kernel-dir=/path/to/custom_kernel_headers
+```
 
-See https://github.com/Juniper/contrail-ansible-deployer/wiki/Contrail-with-Openstack-Kolla .
-Set `CONTAINER_REGISTRY` to `registry:5000` to use containers built in step 5.
+To alter default behaviour and build TF without support for DPDK just provide the `--without-dpdk` flag:
+
+```
+scons --kernel-dir=/path/to/custom_kernel_headers --without-dpdk
+```
+
+To build only specific module like i.e `vrouter`:
+
+```
+scons --kernel-dir=/path/to/custom_kernel_headers vrouter
+```
+
+To build and run unit test against your code:
+
+```
+RTE_KERNELDIR=/path/to/custom_kernel_headers scons --kernel-dir=/path/to/custom_kernel_headers test
+```
+
 
 ## Bring-your-own-VM (experimental)
 
@@ -131,5 +178,5 @@ Set `CONTAINER_REGISTRY` to `registry:5000` to use containers built in step 5.
 
 [Gerrit]: https://review.opencontrail.org/#/admin/projects/Juniper/contrail-dev-env
 [Slack]: https://tungstenfabric.slack.com/messages/C0DQ23SJF/
-[Launchpad]: https://bugs.launchpad.net/opencontrail/+filebug
+[JIRA]: https://jira.tungsten.io/secure/Dashboard.jspa
 [Google Group]: https://groups.google.com/forum/#!forum/tungsten-dev
